@@ -21,7 +21,7 @@ from six.moves import cPickle
 
 data_dir = 'data'
 save_dir = 'save'
-target_file = 'pride'
+target_file = 'comments'
 vocab_file = os.path.join(save_dir, "words_vocab.pkl")
 sequences_step = 1
 rnn_size = 256
@@ -77,7 +77,6 @@ for i in range(0, len(wordlist) - seq_length, sequences_step):
     sequences.append(wordlist[i: i + seq_length])
     next_words.append(wordlist[i + seq_length])
 
-print('nb sequences: ', len(sequences))
 
 X = np.zeros((len(sequences), seq_length, vocab_size), dtype=np.bool)
 y = np.zeros((len(sequences), vocab_size), dtype=np.bool)
