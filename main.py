@@ -28,17 +28,12 @@ rnn_size = 256
 seq_length = 30
 learning_rate = 0.001
 
-
-#Read data
-
 def create_wordlist(doc):
     wl = []
     for word in doc:
         if word.text not in ("\n", "\n\n", '\u2009', 'xa0'):
-            wl.append(word.text.lower())
+            wl.append(word)
     return wl
-
-wordlist = []
 
 input_file = os.path.join(data_dir, target_file + ".txt")
 #read data
@@ -46,6 +41,8 @@ with codecs.open(input_file, "r") as f:
     data = f.read()
 
 #create sentences
+wordlist = []
+
 doc = nlp(data)
 wl = create_wordlist(doc)
 wordlist = wordlist + wl
@@ -85,6 +82,7 @@ for i, sentence in enumerate(sequences):
         X[i, t, vocab[word]] = 1
     y[i, vocab[next_words[i]]] = 1
 
+print(sequences)
 def bidrirectional_lstm_model(seq_length, vocab_size):
     print('Build LSTM model.')
     model = Sequential()
@@ -103,8 +101,8 @@ def bidrirectional_lstm_model(seq_length, vocab_size):
 md = bidrirectional_lstm_model(seq_length, vocab_size)
 md.summary()
 
-batch_size = 32
-num_epochs = 50
+batch_size = 30
+num_epochs = 1
 
 callbacks=[EarlyStopping(patience=4, monitor='val_loss'),
             ModelCheckpoint(filepath=save_dir + '/' + 'my_model_gen_sentences.{epoch:02d}-{val_loss:.2f}.hdf5',
