@@ -1,3 +1,18 @@
+# Code is taken from https://medium.com/@david.campion/text-generation-using-bidirectional-lstm-and-doc2vec-models-1-3-8979eb65cb3a
+# Solely for experimentation and NN studying
+
+from __future__ import print_function
+
+from keras.models import Sequential, Model
+from keras.layers import Dense, Activation, Dropout
+from keras.layers import LSTM, Input, Bidirectional
+from keras.optimizers import Adam
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.metrics import categorical_accuracy
+
+import spacy
+nlp = spacy.load('en')
+
 import numpy as np
 import pandas as pd
 from keras.models import Sequential
