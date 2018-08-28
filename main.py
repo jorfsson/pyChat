@@ -1,118 +1,57 @@
-from __future__ import print_function
-
-from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Dropout
-from keras.layers import LSTM, Input, Bidirectional
-from keras.optimizers import Adam
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.metrics import categorical_accuracy
-
-import spacy
-nlp = spacy.load('en')
-
 import numpy as np
-import random
-import sys
-import os
-import time
-import codecs
-import collections
-from six.moves import cPickle
+import pandas as pd
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import Dropout
+from keras.layers import LSTM
+from keras.utils import np_utils
 
-data_dir = 'data'
-save_dir = 'save'
-target_file = 'comments'
-vocab_file = os.path.join(save_dir, "words_vocab.pkl")
-sequences_step = 1
-rnn_size = 256
-seq_length = 30
-learning_rate = 0.001
+data = (open('./data/sample.txt').read())
+chars = sorted(list(set(data)))
 
-def create_wordlist(doc):
-    wl = []
-    for word in doc:
-        if word.text not in ("\n", "\n\n", '\u2009', 'xa0'):
-            wl.append(word)
-    return wl
+id_char = {id:char for id, char in enumerate(chars)}
+char_id = {char:id for id, char in enumerate(chars)}
 
-input_file = os.path.join(data_dir, target_file + ".txt")
-#read data
-with codecs.open(input_file, "r") as f:
-    data = f.read()
+x = []
+Y = []
+length = len(data)
+seq_length = 100
 
-#create sentences
-wordlist = []
+for i in range(0, length - seq_length, 1):
+    sequence = data[i:i + seq_length]
+    label = data[i + seq_length]
+    x.append([char_id[char] for char in sequence])
+    Y.append(char_id[label])
 
-doc = nlp(data)
-wl = create_wordlist(doc)
-wordlist = wordlist + wl
+x_mod = np.reshape(x, (len(x), seq_length, 1))
+x_mod = x_mod / float(len(chars))
+y_mod = np_utils.to_categorical(Y)
 
-#create the dictionary
-# count the number of words
-word_counts = collections.Counter(wordlist)
+model = Sequential()
+model.add(LSTM(400, input_shape=(x_mod.shape[1], x_mod.shape[2]), return_sequences=True))
+model.add(Dropout(0.2))
+model.add(LSTM(400))
+model.add(Dropout(0.2))
+model.add(Dense(y_mod.shape[1], activation='softmax'))
 
-# Mapping from index to word : vocabulary
-vocabulary_inv = [x[0] for x in word_counts.most_common()]
-vocabulary_inv = list(sorted(vocabulary_inv))
+model.compile(loss='categorical_crossentropy', optimizer='adam')
 
-# Mapping from word to index
-vocab = {x: i for i, x in enumerate(vocabulary_inv)}
+model.fit(x_mod, y_mod, epochs=1, batch_size=100)
+model.save_weights('./models/text_generator_gigantic.h5')
 
-words = [x[0] for x in word_counts.most_common()]
+model.load_weights('./models/text_generator_gigantic.h5')
 
-#size of vocabulary
-vocab_size = len(words)
+string_mapped = x[99]
+# generating characters
+for i in range(seq_length):
+    x1 = np.reshape(string_mapped,(1,len(string_mapped), 1))
+    x1 = x1 / float(len(chars))
+    pred_index = np.argmax(model.predict(x1, verbose=0))
+    seq = [id_char[value] for value in string_mapped]
+    string_mapped.append(pred_index)
+    full_string = string_mapped[1:len(string_mapped)]
 
-#save the words and vocabulary
-with open(os.path.join(vocab_file), 'wb') as f:
-    cPickle.dump((words, vocab, vocabulary_inv), f)
-
-sequences = []
-next_words = []
-
-for i in range(0, len(wordlist) - seq_length, sequences_step):
-    sequences.append(wordlist[i: i + seq_length])
-    next_words.append(wordlist[i + seq_length])
-
-
-X = np.zeros((len(sequences), seq_length, vocab_size), dtype=np.bool)
-y = np.zeros((len(sequences), vocab_size), dtype=np.bool)
-for i, sentence in enumerate(sequences):
-    for t, word in enumerate(sentence):
-        X[i, t, vocab[word]] = 1
-    y[i, vocab[next_words[i]]] = 1
-
-print(sequences)
-def bidrirectional_lstm_model(seq_length, vocab_size):
-    print('Build LSTM model.')
-    model = Sequential()
-    model.add(Bidirectional(LSTM(rnn_size, activation="relu"), input_shape=(seq_length, vocab_size)))
-    model.add(Dropout(0.6))
-    model.add(Dense(vocab_size))
-    model.add(Activation('softmax'))
-
-    optimizer = Adam(lr=learning_rate)
-    callbacks=[EarlyStopping(patience=2, monitor='val_loss')]
-    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=[categorical_accuracy])
-    print("model built!")
-    return model
-
-
-md = bidrirectional_lstm_model(seq_length, vocab_size)
-md.summary()
-
-batch_size = 30
-num_epochs = 1
-
-callbacks=[EarlyStopping(patience=4, monitor='val_loss'),
-            ModelCheckpoint(filepath=save_dir + '/' + 'my_model_gen_sentences.{epoch:02d}-{val_loss:.2f}.hdf5',
-            monitor='val_loss', verbose=0, mode='auto', period=2)]
-
-history = md.fit(X, y,
-                batch_size=batch_size,
-                shuffle=True,
-                epochs=num_epochs,
-                callbacks=callbacks,
-                validation_split=0.1)
-
-md.save(save_dir + "/" + 'my_model_generate_sentences.h5')
+txt=""
+for char in full_string:
+    txt = txt+char
+print(txt)
