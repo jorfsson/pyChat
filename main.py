@@ -1,3 +1,6 @@
+# Code is taken from https://medium.com/@david.campion/text-generation-using-bidirectional-lstm-and-doc2vec-models-1-3-8979eb65cb3a
+# Solely for experimentation and NN studying
+
 from __future__ import print_function
 
 from keras.models import Sequential, Model
